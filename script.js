@@ -22,19 +22,26 @@ gameWindow.height = window.innerHeight
 
 class Circle {
     constructor() {
-        this.spawn()
+        this.radius = random(screenMin * 0.15, screenMin * 0.2)
+        this.firstRadius = this.radius
         this.weight = random(screenMin * 0.01, screenMin * 0.02)
-        this.shrinkSpeed = random(70, 120)
         this.color1 = `rgb(${random(25, 255)}, ${random(25, 255)}, ${random(25, 255)})`
         this.color2 = `rgb(${random(25, 255)}, ${random(25, 255)}, ${random(25, 255)})`
         this.color3 = `rgb(${random(25, 255)}, ${random(25, 255)}, ${random(25, 255)})`
         this.color4 = `rgb(${random(25, 255)}, ${random(25, 255)}, ${random(25, 255)})`
         this.direction = Math.random() < 0.5 ? 1 : - 1
+        this.rotationSpeed = random(5, 15)
+        this.vx = this.vy = 0
+        this.shrinkSpeed = Math.min(this.radius, random(this.radius * 0.3 + 0.05 * level, this.radius * 0.4 + 0.05 * level))
+        if (level > 4 && Math.random() < 0.1 + 0.05 * (level - 5)) {
+            this.vx = random(screenMin * 0.15, screenMin * 0.25) * (Math.random() < 0.5 ? this.direction : -this.direction)
+            this.vy = random(screenMin * 0.15, screenMin * 0.25) * (Math.random() < 0.5 ? this.direction : -this.direction)
+        }
+        this.spawn()
     }
 
     spawn() {
         let buff = screenMin * 0.2
-        this.radius = random(screenMin * 0.15, buff)
         this.x = random(buff, screenWidth - buff)
         this.y = random(buff, screenHeight - buff)
         for (let i = 0; i < circles.length;i++) {
@@ -44,7 +51,6 @@ class Circle {
                 break
             }
         }
-        this.firstRadius = this.radius
     }   
 
     draw() {
@@ -52,19 +58,19 @@ class Circle {
         ctx.lineWidth = this.weight
         ctx.strokeStyle = this.color1
         ctx.beginPath()
-        ctx.arc(this.x, this.y, this.radius, 0 + this.direction * frameCount / 5, PI / 2 + this.direction * frameCount / 5)
+        ctx.arc(this.x, this.y, this.radius, 0 + this.direction * frameCount / this.rotationSpeed, PI / 2 + this.direction * frameCount / this.rotationSpeed)
         ctx.stroke()
         ctx.beginPath()
         ctx.strokeStyle = this.color2
-        ctx.arc(this.x, this.y, this.radius, PI / 2 + this.direction * frameCount / 5, PI + this.direction * frameCount / 5)
+        ctx.arc(this.x, this.y, this.radius, PI / 2 + this.direction * frameCount / this.rotationSpeed, PI + this.direction * frameCount / this.rotationSpeed)
         ctx.stroke()
         ctx.beginPath()
         ctx.strokeStyle = this.color3
-        ctx.arc(this.x, this.y, this.radius, PI + this.direction * frameCount / 5, PI * 1.5 + this.direction * frameCount / 5)
+        ctx.arc(this.x, this.y, this.radius, PI + this.direction * frameCount / this.rotationSpeed, PI * 1.5 + this.direction * frameCount / this.rotationSpeed)
         ctx.stroke()
         ctx.beginPath()
         ctx.strokeStyle = this.color4
-        ctx.arc(this.x, this.y, this.radius, PI * 1.5 + this.direction * frameCount / 5, TAU + this.direction * frameCount / 5)
+        ctx.arc(this.x, this.y, this.radius, PI * 1.5 + this.direction * frameCount / this.rotationSpeed, TAU + this.direction * frameCount / this.rotationSpeed)
         ctx.stroke()
         ctx.restore()
     }
@@ -73,6 +79,14 @@ class Circle {
         this.radius -= this.shrinkSpeed * delta
         if (this.radius < 0) {
             this.radius = 0
+        }
+        this.x += this.vx * delta
+        this.y += this.vy * delta
+        if (this.x < this.radius || this.x > screenWidth - this.radius) {
+            this.vx *= -1
+        }  
+        if (this.y < this.radius || this.y > screenHeight - this.radius) {
+            this.vy *= -1
         }  
     }
 }
@@ -106,8 +120,8 @@ function checkHit(e) {
                 level++
                 circleCount = 0
                 spawnFrequency -= 250
-                if (spawnFrequency < 500) {
-                    spawnFrequency = 400
+                if (spawnFrequency < 250) {
+                    spawnFrequency = 250
                 }
             }
         }
@@ -133,7 +147,7 @@ function gameLoop(timestamp) {
         c.draw()
     })
 
-    if (timestamp - lastCircleSpawn > spawnFrequency && circles.length < 10) {
+    if (timestamp - lastCircleSpawn > spawnFrequency && circles.length < 7) {
       
         let circle = new Circle()
 
