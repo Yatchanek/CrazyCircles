@@ -2,7 +2,8 @@ const gameWindow = document.getElementById('game')
 const ctx = gameWindow.getContext('2d')
 const PI = Math.PI
 const TAU = 2 * PI
-const circles = []
+let circles = []
+let scoreBubbles = []
 let screenWidth = window.innerWidth
 let screenHeight = window.innerHeight
 let lastFrame = 0
@@ -19,24 +20,57 @@ let frameCount = 0
 gameWindow.width = window.innerWidth
 gameWindow.height = window.innerHeight
 
+class ScoreBubble {
+    constructor(x, y, value, colors, size) {
+        this.x = x
+        this.y = y
+        this.value = value.toString()
+        this.colors = colors
+        this.lifetime = 0.5
+        this.expired = false
+        this.size = size / 2
+        this.colorFrame = 0
+    }
+
+    update(delta) {
+        this.lifetime -= delta
+        if (this.lifetime < 0) {
+            this.expired = true
+        }
+        this.size *= 1.01
+        this.color = this.colors[this.colorFrame % this.colors.length]
+        this.colorFrame++
+    }
+
+    draw() {
+        ctx.save()
+        ctx.font = `${this.size}px 'Impact'`
+        ctx.fillStyle = this.color
+        let w = ctx.measureText(this.value).width
+        ctx.fillText(this.value, this.x - w / 2, this.y + this.size / 4)
+        ctx.restore()
+    }
+}
 
 class Circle {
     constructor() {
         this.radius = random(screenMin * 0.15, screenMin * 0.2)
         this.firstRadius = this.radius
-        this.weight = random(screenMin * 0.01, screenMin * 0.02)
-        this.color1 = `rgb(${random(25, 255)}, ${random(25, 255)}, ${random(25, 255)})`
-        this.color2 = `rgb(${random(25, 255)}, ${random(25, 255)}, ${random(25, 255)})`
-        this.color3 = `rgb(${random(25, 255)}, ${random(25, 255)}, ${random(25, 255)})`
-        this.color4 = `rgb(${random(25, 255)}, ${random(25, 255)}, ${random(25, 255)})`
+        this.weight = random(screenMin * 0.01, screenMin * 0.025)
+        this.pieces = random(5,15)
+        this.colors = []
+        for (let i = 0; i < this.pieces; i++) {
+            this.colors.push(`rgb(${random(100, 255)}, ${random(10, 255)}, ${random(10, 255)})`)
+        }
         this.direction = Math.random() < 0.5 ? 1 : - 1
-        this.rotationSpeed = random(5, 15)
+        this.rotationSpeed = random(3, 12)
         this.vx = this.vy = 0
         this.shrinkSpeed = Math.min(this.radius, random(this.radius * 0.3 + 0.05 * level, this.radius * 0.4 + 0.05 * level))
         if (level > 4 && Math.random() < 0.1 + 0.05 * (level - 5)) {
             this.vx = random(screenMin * 0.15, screenMin * 0.25) * (Math.random() < 0.5 ? this.direction : -this.direction)
             this.vy = random(screenMin * 0.15, screenMin * 0.25) * (Math.random() < 0.5 ? this.direction : -this.direction)
         }
+        this.dead = false
         this.spawn()
     }
 
@@ -56,22 +90,12 @@ class Circle {
     draw() {
         ctx.save()
         ctx.lineWidth = this.weight
-        ctx.strokeStyle = this.color1
-        ctx.beginPath()
-        ctx.arc(this.x, this.y, this.radius, 0 + this.direction * frameCount / this.rotationSpeed, PI / 2 + this.direction * frameCount / this.rotationSpeed)
-        ctx.stroke()
-        ctx.beginPath()
-        ctx.strokeStyle = this.color2
-        ctx.arc(this.x, this.y, this.radius, PI / 2 + this.direction * frameCount / this.rotationSpeed, PI + this.direction * frameCount / this.rotationSpeed)
-        ctx.stroke()
-        ctx.beginPath()
-        ctx.strokeStyle = this.color3
-        ctx.arc(this.x, this.y, this.radius, PI + this.direction * frameCount / this.rotationSpeed, PI * 1.5 + this.direction * frameCount / this.rotationSpeed)
-        ctx.stroke()
-        ctx.beginPath()
-        ctx.strokeStyle = this.color4
-        ctx.arc(this.x, this.y, this.radius, PI * 1.5 + this.direction * frameCount / this.rotationSpeed, TAU + this.direction * frameCount / this.rotationSpeed)
-        ctx.stroke()
+        for (let i = 0; i < this.pieces; i++) {
+            ctx.strokeStyle = this.colors[i]
+            ctx.beginPath()
+            ctx.arc(this.x, this.y, this.radius, i * TAU / this.pieces + this.direction * frameCount / this.rotationSpeed, (i + 1) * TAU / this.pieces + + this.direction * frameCount / this.rotationSpeed,)
+            ctx.stroke()
+        }
         ctx.restore()
     }
 
@@ -79,6 +103,7 @@ class Circle {
         this.radius -= this.shrinkSpeed * delta
         if (this.radius < 0) {
             this.radius = 0
+            this.dead = true
         }
         this.x += this.vx * delta
         this.y += this.vy * delta
@@ -87,7 +112,8 @@ class Circle {
         }  
         if (this.y < this.radius || this.y > screenHeight - this.radius) {
             this.vy *= -1
-        }  
+        }
+        this.weight *= (1 + 0.025 * Math.sin(frameCount / 10))
     }
 }
 
@@ -113,7 +139,7 @@ function checkHit(e) {
     for (circle of circles) {
         if((e.pageX - circle.x) * (e.pageX - circle.x) + (e.pageY - circle.y) * (e.pageY - circle.y) < 
             circle.radius * circle.radius) {
-            circles.splice(circles.indexOf(circle), 1)
+            circle.dead = true
             let pen = circle.radius / circle.firstRadius
             score += Math.ceil(50 * pen)
             if (++circleCount % (10 * level) === 0) {
@@ -124,6 +150,9 @@ function checkHit(e) {
                     spawnFrequency = 250
                 }
             }
+
+            let sb = new ScoreBubble(circle.x, circle.y, Math.ceil(50 * pen), circle.colors, circle.radius)
+            scoreBubbles.push(sb)
         }
     }
 }
@@ -134,10 +163,12 @@ function gameLoop(timestamp) {
     frameCount++
     cls()
     ctx.fillStyle = 'rgb(255, 255, 255)'
-    ctx.font = `bold ${screenMin * 0.04}px Arial`
+    ctx.font = `${screenMin * 0.04}px 'Impact'`
     ctx.fillText(`Score: ${score}`, 20, screenMin * 0.07)
     ctx.fillText(`Fails: ${fails}`, 20, screenMin * 0.14)
     ctx.fillText(`Level: ${level}`, 20, screenMin * 0.21)
+
+    circles = circles.filter(circle => circle.dead === false)
     circles.forEach(c => {
         c.update(delta)
         if (c.radius === 0) {
@@ -146,6 +177,13 @@ function gameLoop(timestamp) {
         }
         c.draw()
     })
+
+    scoreBubbles = scoreBubbles.filter(sb => sb.expired === false)
+    scoreBubbles.forEach( sb => {
+        sb.update(delta)
+        sb.draw()
+    })
+
 
     if (timestamp - lastCircleSpawn > spawnFrequency && circles.length < 7) {
       
