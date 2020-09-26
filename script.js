@@ -138,7 +138,7 @@ class Polygon extends Circle {
         super(x, y)
         this.weight = random(screenMin * 0.005, screenMin * 0.015)
         this.rotationSpeed = random(7,15)
-        this.pieces = random(4, 6 + Math.floor(level / 2))
+        this.pieces = random(4 + Math.floor(level / 4), 6 + Math.floor(level / 2))
         this.colors = []
         for (let i = 0; i < this.pieces; i++) {
             this.colors.push(`rgb(${random(100, 255)}, ${random(10, 255)}, ${random(10, 255)})`)
@@ -204,9 +204,9 @@ function checkHit(e) {
                     if (++circleCount % (10 * level) === 0) {
                         level++
                         circleCount = 0
-                        spawnFrequency -= 250
-                        if (spawnFrequency < 250) {
-                            spawnFrequency = 250
+                        spawnFrequency *= (0.9 - 0.02 * (level - 2))
+                        if (spawnFrequency < 350) {
+                            spawnFrequency = 350
                         }
                     }
                 } else if (entity.type === 'bonus') {
@@ -280,6 +280,7 @@ function gameLoop(timestamp) {
         score = 0
         fails = 0
         missedCircles = 0
+        spawnFrequency = 2000
         countdown = 3
 
         ctx.fillStyle = 'rgb(255, 255, 255)'
