@@ -2,12 +2,12 @@ const gameWindow = document.getElementById('game')
 const ctx = gameWindow.getContext('2d')
 const PI = Math.PI
 const TAU = 2 * PI
-let circles = []
+let entities = []
 let scoreBubbles = []
 let screenWidth = window.innerWidth
 let screenHeight = window.innerHeight
 let lastFrame = 0
-let lastCircleSpawn = 0
+let lastEntitySpawn = 0
 let pointerX, pointerY
 let screenMin = Math.min(screenHeight, screenWidth)
 let score = 0
@@ -17,7 +17,7 @@ let circleCount = 0
 let spawnFrequency = 2000
 let frameCount = 0
 let countdown = 3
-let gameState = 'COUNTDOWN'
+let nextState = gameState = 'COUNTDOWN'
 
 gameWindow.width = window.innerWidth
 gameWindow.height = window.innerHeight
@@ -46,13 +46,15 @@ class ScoreBubble {
 
     draw() {
         ctx.save()
-        ctx.font = `${this.size}px 'Impact'`
+        ctx.font = `${this.size}px 'Bernard MT Condensed', Impact`
         ctx.fillStyle = this.color
+        ctx.textBaseline = 'middle'
         let w = ctx.measureText(this.value).width
-        ctx.fillText(this.value, this.x - w / 2, this.y + this.size / 4)
+        ctx.fillText(this.value, this.x - w / 2, this.y)
         ctx.restore()
     }
 }
+
 
 class Circle {
     constructor(x, y) {
@@ -61,11 +63,7 @@ class Circle {
         this.radius = random(screenMin * 0.15, screenMin * 0.2)
         this.firstRadius = this.radius
         this.weight = random(screenMin * 0.01, screenMin * 0.025)
-        this.pieces = random(5,15)
-        this.colors = []
-        for (let i = 0; i < this.pieces; i++) {
-            this.colors.push(`rgb(${random(100, 255)}, ${random(10, 255)}, ${random(10, 255)})`)
-        }
+        
         this.direction = Math.random() < 0.5 ? 1 : - 1
         this.rotationSpeed = random(3, 12)
         this.vx = this.vy = 0
@@ -75,21 +73,14 @@ class Circle {
             this.vy = random(screenMin * 0.15, screenMin * 0.25) * (Math.random() < 0.5 ? this.direction : -this.direction)
         }
         this.dead = false
-       // this.spawn()
-    }
 
-    spawn() {
-        let buff = screenMin * 0.2
-        this.x = random(buff, screenWidth - buff)
-        this.y = random(buff, screenHeight - buff)
-        for (let i = 0; i < circles.length;i++) {
-            if ((this.x - circles[i].x) * (this.x - circles[i].x) + (this.y - circles[i].y) * (this.y - circles[i].y) <
-            (this.radius + circles[i].radius) * (this.radius + circles[i].radius)) {
-                this.spawn()
-                break
-            }
+        this.pieces = random(5,15)
+        this.colors = []
+        for (let i = 0; i < this.pieces; i++) {
+            this.colors.push(`rgb(${random(100, 255)}, ${random(10, 255)}, ${random(10, 255)})`)
         }
-    }   
+        this.type = 'circle'
+    }
 
     draw() {
         ctx.save()
@@ -121,6 +112,41 @@ class Circle {
     }
 }
 
+
+
+class Polygon extends Circle {
+    constructor(x, y) {
+        super(x, y)
+        this.weight = random(screenMin * 0.005, screenMin * 0.01)
+        this.rotationSpeed = random(7,15)
+        this.pieces = random(4,8)
+        this.colors = []
+        for (let i = 0; i < this.pieces; i++) {
+            this.colors.push(`rgb(${random(100, 255)}, ${random(10, 255)}, ${random(10, 255)})`)
+        }
+        this.type = 'polygon'
+    }
+
+    update(delta) {
+        super.update(delta)
+    }
+
+    draw() {
+        ctx.save()
+        ctx.lineWidth = this.weight
+        ctx.beginPath()
+        for (let i = 0; i < this.pieces; i++) {
+            ctx.strokeStyle = this.colors[i]
+            ctx.moveTo(this.x + this.radius * Math.cos(i * TAU / this.pieces + this.direction * frameCount / this.rotationSpeed), this.y + this.radius * Math.sin(i * TAU / this.pieces + this.direction * frameCount / this.rotationSpeed) )
+            ctx.lineTo(this.x + this.radius * Math.cos((i + 1) * TAU / this.pieces + this.direction * frameCount / this.rotationSpeed), this.y + this.radius * Math.sin((i + 1) * TAU / this.pieces + this.direction * frameCount / this.rotationSpeed))           
+        }
+        ctx.stroke()
+        ctx.restore()
+    }
+}
+
+
+
 function cls() {
     ctx.save()
     ctx.fillStyle = 'rgb(0,0,0)'
@@ -140,45 +166,64 @@ function random(r1, r2) {
 }
 
 function checkHit(e) {
-    for (circle of circles) {
-        if((e.pageX - circle.x) * (e.pageX - circle.x) + (e.pageY - circle.y) * (e.pageY - circle.y) < 
-            circle.radius * circle.radius) {
-            circle.dead = true
-            let pen = circle.radius / circle.firstRadius
-            score += Math.ceil(50 * pen)
-            if (++circleCount % (10 * level) === 0) {
-                level++
-                circleCount = 0
-                spawnFrequency -= 250
-                if (spawnFrequency < 250) {
-                    spawnFrequency = 250
-                }
-            }
 
-            let sb = new ScoreBubble(circle.x, circle.y, Math.ceil(50 * pen), circle.colors, circle.radius)
-            scoreBubbles.push(sb)
-        }
+    if (gameState === 'GAMEOVER') {
+        nextState = 'COUNTDOWN'
+        spawnEntity(false)
+        lastEntitySpawn = performance.now()
     }
+    else {
+        for (entity of entities) {
+            if((e.pageX - entity.x) * (e.pageX - entity.x) + (e.pageY - entity.y) * (e.pageY - entity.y) < 
+                entity.radius * entity.radius) {
+                entity.dead = true
+                let points = Math.ceil(50 * entity.radius / entity.firstRadius)
+                if (entity.type === 'circle') {
+                    score += points
+                    if (++circleCount % (10 * level) === 0) {
+                        level++
+                        circleCount = 0
+                        spawnFrequency -= 250
+                        if (spawnFrequency < 250) {
+                            spawnFrequency = 250
+                        }
+                    }
+                } else {
+                    points *= -3
+                    score += points
+                    fails++
+                }
+    
+                if (fails > 0) {
+                    nextState = 'GAMEOVER'
+                }
+    
+                let sb = new ScoreBubble(entity.x, entity.y, points, entity.colors, entity.radius)
+                scoreBubbles.push(sb)
+            }
+        }
+    }   
 }
 
-function spawnCircle() {
+function spawnEntity(allowPolygon) {
     let buff = screenMin * 0.2
     let x = random(buff, screenWidth - buff)
     let y = random(buff, screenHeight - buff)
-    let circle
+    let entity
+    let type = (allowPolygon && Math.random() > 0.04 + 0.015 * level) ? 'circle' : 'polygon'
     let canPlace = true
     do {
-        circle = new Circle(x, y)
-        for (let i = 0; i < circles.length;i++) {
-            if ((this.x - circles[i].x) * (this.x - circles[i].x) + (this.y - circles[i].y) * (this.y - circles[i].y) <
-            (this.radius + circles[i].radius) * (this.radius + circles[i].radius)) {
+        type === 'circle' ? entity = new Circle(x, y) : entity = new Polygon(x, y)
+        for (let i = 0; i < entities.length;i++) {
+            if ((this.x - entities[i].x) * (this.x - entities[i].x) + (this.y - entities[i].y) * (this.y - entities[i].y) <
+            (this.radius + entities[i].radius) * (this.radius + entities[i].radius)) {
                 canPlace = false
                 break
             }
         }
     } while(!canPlace)
     
-    circles.push(circle)
+    entities.push(entity)
 }
 
 function gameLoop(timestamp) {
@@ -186,33 +231,58 @@ function gameLoop(timestamp) {
     lastFrame = timestamp
     frameCount++
     cls()
+
+    if (gameState === 'GAMEOVER') {
+        entities = []
+        scoreBubbles = []
+        score = 0
+        fails = 0
+        countdown = 3
+        
+        ctx.fillStyle = 'rgb(255, 255, 255)'
+        ctx.font = `${screenMin * 0.2}pt 'Bernard MT Condensed', Impact`
+        ctx.textBaseline = 'middle'
+
+        let txt = 'GAME OVER'
+        let fraction = 0.25
+        let w
+        do {
+            ctx.font = `${screenMin * fraction}pt 'Bernard MT Condensed', Impact`
+            w = ctx.measureText(txt).width
+            fraction *= 0.9
+        } while (w > screenMin * 0.9)
+
+        ctx.fillText(txt, (screenWidth - w) / 2, screenHeight / 2)
+    }
+
     if (gameState === 'COUNTDOWN') {
         ctx.fillStyle = 'rgb(255, 255, 255)'
-        ctx.font = `${screenMin * 0.2}px 'Impact'`
-        let c = Math.ceil(countdown)
-        let w = ctx.measureText(c).width
-        ctx.fillText(c, screenWidth / 2 - w, screenHeight / 2)
+        ctx.font = `${screenMin * 0.2}pt 'Bernard MT Condensed', Impact`
+        ctx.textBaseline = 'middle'
+        let txt = Math.ceil(countdown)
+        let w = ctx.measureText(txt).width
+        ctx.fillText(txt, (screenWidth - w) / 2, screenHeight / 2)
+        ctx.font = `${screenMin * 0.05}pt 'Bernard MT Condensed', Impact`
+        txt = 'Circles are good, polygons are bad!'
+        w = ctx.measureText(txt).width
+        ctx.fillText(txt, (screenWidth - w) / 2, screenHeight * 0.8)
         countdown -=delta
         if (countdown <= 0) {
-            gameState = 'PLAY'
-            spawnCircle()
-            lastCircleSpawn = timestamp
+            nextState = 'PLAY'
+            spawnEntity(true)
+            lastEntitySpawn = timestamp
         }
     }
     if (gameState === 'PLAY') {
         ctx.fillStyle = 'rgb(255, 255, 255)'
-        ctx.font = `${screenMin * 0.04}px 'Impact'`
-        ctx.fillText(`Score: ${score}`, 20, screenMin * 0.07)
-        ctx.fillText(`Fails: ${fails}`, 20, screenMin * 0.14)
-        ctx.fillText(`Level: ${level}`, 20, screenMin * 0.21)
+        ctx.font = `${screenMin * 0.04}px 'Bernard MT Condensed', Impact`
+        ctx.fillText(`Score: ${score}`, 20, screenMin * 0.03)
+        ctx.fillText(`Fails: ${fails}`, 20, screenMin * 0.085)
+        ctx.fillText(`Level: ${level}`, 20, screenMin * 0.145)
     
-        circles = circles.filter(circle => circle.dead === false)
-        circles.forEach(c => {
+        entities = entities.filter(entity => entity.dead === false)
+        entities.forEach(c => {
             c.update(delta)
-            if (c.radius === 0) {
-                circles.splice(circles.indexOf(c), 1)
-                fails++
-            }
             c.draw()
         })
     
@@ -223,18 +293,16 @@ function gameLoop(timestamp) {
         })
     
     
-        if (timestamp - lastCircleSpawn > spawnFrequency && circles.length < 7) {      
-            spawnCircle()
-            lastCircleSpawn = timestamp
+        if (timestamp - lastEntitySpawn > spawnFrequency && entities.length < 7) {      
+            spawnEntity(true)
+            lastEntitySpawn = timestamp
         }    
     }
-   
+    gameState = nextState
     window.requestAnimationFrame(gameLoop)
 }
 
-
-
-
+//Main Program :)
 window.requestAnimationFrame(gameLoop)
 
 window.addEventListener('pointerdown', e => checkHit(e))
