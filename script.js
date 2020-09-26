@@ -55,7 +55,9 @@ class ScoreBubble {
 }
 
 class Circle {
-    constructor() {
+    constructor(x, y) {
+        this.x = x
+        this.y = y
         this.radius = random(screenMin * 0.15, screenMin * 0.2)
         this.firstRadius = this.radius
         this.weight = random(screenMin * 0.01, screenMin * 0.025)
@@ -73,7 +75,7 @@ class Circle {
             this.vy = random(screenMin * 0.15, screenMin * 0.25) * (Math.random() < 0.5 ? this.direction : -this.direction)
         }
         this.dead = false
-        this.spawn()
+       // this.spawn()
     }
 
     spawn() {
@@ -159,6 +161,26 @@ function checkHit(e) {
     }
 }
 
+function spawnCircle() {
+    let buff = screenMin * 0.2
+    let x = random(buff, screenWidth - buff)
+    let y = random(buff, screenHeight - buff)
+    let circle
+    let canPlace = true
+    do {
+        circle = new Circle(x, y)
+        for (let i = 0; i < circles.length;i++) {
+            if ((this.x - circles[i].x) * (this.x - circles[i].x) + (this.y - circles[i].y) * (this.y - circles[i].y) <
+            (this.radius + circles[i].radius) * (this.radius + circles[i].radius)) {
+                canPlace = false
+                break
+            }
+        }
+    } while(!canPlace)
+    
+    circles.push(circle)
+}
+
 function gameLoop(timestamp) {
     let delta = (timestamp - lastFrame) / 1000
     lastFrame = timestamp
@@ -173,8 +195,7 @@ function gameLoop(timestamp) {
         countdown -=delta
         if (countdown <= 0) {
             gameState = 'PLAY'
-            let circle = new Circle()
-            circles.push(circle)
+            spawnCircle()
             lastCircleSpawn = timestamp
         }
     }
@@ -203,8 +224,7 @@ function gameLoop(timestamp) {
     
     
         if (timestamp - lastCircleSpawn > spawnFrequency && circles.length < 7) {      
-            let circle = new Circle()
-            circles.push(circle)
+            spawnCircle()
             lastCircleSpawn = timestamp
         }    
     }
