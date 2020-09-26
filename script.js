@@ -194,7 +194,7 @@ function checkHit(e) {
                     fails++
                 }
     
-                if (fails > 0) {
+                if (fails > 3) {
                     nextState = 'GAMEOVER'
                 }
     
@@ -209,8 +209,12 @@ function spawnEntity(allowPolygon) {
     let buff = screenMin * 0.2
     let x = random(buff, screenWidth - buff)
     let y = random(buff, screenHeight - buff)
-    let entity
-    let type = (allowPolygon && Math.random() > 0.04 + 0.015 * level) ? 'circle' : 'polygon'
+    let entity, type
+    if (allowPolygon) {
+        type = Math.random() > 0.04 + 0.015 * level ? 'circle' : 'polygon'
+    }
+    else type = 'circle'
+    
     let canPlace = true
     do {
         type === 'circle' ? entity = new Circle(x, y) : entity = new Polygon(x, y)
@@ -238,7 +242,7 @@ function gameLoop(timestamp) {
         score = 0
         fails = 0
         countdown = 3
-        
+
         ctx.fillStyle = 'rgb(255, 255, 255)'
         ctx.font = `${screenMin * 0.2}pt 'Bernard MT Condensed', Impact`
         ctx.textBaseline = 'middle'
@@ -269,7 +273,7 @@ function gameLoop(timestamp) {
         countdown -=delta
         if (countdown <= 0) {
             nextState = 'PLAY'
-            spawnEntity(true)
+            spawnEntity(false)
             lastEntitySpawn = timestamp
         }
     }
@@ -277,7 +281,9 @@ function gameLoop(timestamp) {
         ctx.fillStyle = 'rgb(255, 255, 255)'
         ctx.font = `${screenMin * 0.04}px 'Bernard MT Condensed', Impact`
         ctx.fillText(`Score: ${score}`, 20, screenMin * 0.03)
+        ctx.fillStyle = `rgb(255, ${255 - 80 * fails}, ${255 - 80 * fails})`
         ctx.fillText(`Fails: ${fails}`, 20, screenMin * 0.085)
+        ctx.fillStyle = 'rgb(255, 255, 255)'
         ctx.fillText(`Level: ${level}`, 20, screenMin * 0.145)
     
         entities = entities.filter(entity => entity.dead === false)
