@@ -16,6 +16,8 @@ let fails = 0
 let circleCount = 0
 let spawnFrequency = 2000
 let frameCount = 0
+let countdown = 3
+let gameState = 'COUNTDOWN'
 
 gameWindow.width = window.innerWidth
 gameWindow.height = window.innerHeight
@@ -162,43 +164,55 @@ function gameLoop(timestamp) {
     lastFrame = timestamp
     frameCount++
     cls()
-    ctx.fillStyle = 'rgb(255, 255, 255)'
-    ctx.font = `${screenMin * 0.04}px 'Impact'`
-    ctx.fillText(`Score: ${score}`, 20, screenMin * 0.07)
-    ctx.fillText(`Fails: ${fails}`, 20, screenMin * 0.14)
-    ctx.fillText(`Level: ${level}`, 20, screenMin * 0.21)
-
-    circles = circles.filter(circle => circle.dead === false)
-    circles.forEach(c => {
-        c.update(delta)
-        if (c.radius === 0) {
-            circles.splice(circles.indexOf(c), 1)
-            fails++
+    if (gameState === 'COUNTDOWN') {
+        ctx.fillStyle = 'rgb(255, 255, 255)'
+        ctx.font = `${screenMin * 0.2}px 'Impact'`
+        let c = Math.ceil(countdown)
+        let w = ctx.measureText(c).width
+        ctx.fillText(c, screenWidth / 2 - w, screenHeight / 2)
+        countdown -=delta
+        if (countdown <= 0) {
+            gameState = 'PLAY'
+            let circle = new Circle()
+            circles.push(circle)
+            lastCircleSpawn = timestamp
         }
-        c.draw()
-    })
-
-    scoreBubbles = scoreBubbles.filter(sb => sb.expired === false)
-    scoreBubbles.forEach( sb => {
-        sb.update(delta)
-        sb.draw()
-    })
-
-
-    if (timestamp - lastCircleSpawn > spawnFrequency && circles.length < 7) {
-      
-        let circle = new Circle()
-
-        circles.push(circle)
-        lastCircleSpawn = timestamp
     }
-
-
+    if (gameState === 'PLAY') {
+        ctx.fillStyle = 'rgb(255, 255, 255)'
+        ctx.font = `${screenMin * 0.04}px 'Impact'`
+        ctx.fillText(`Score: ${score}`, 20, screenMin * 0.07)
+        ctx.fillText(`Fails: ${fails}`, 20, screenMin * 0.14)
+        ctx.fillText(`Level: ${level}`, 20, screenMin * 0.21)
+    
+        circles = circles.filter(circle => circle.dead === false)
+        circles.forEach(c => {
+            c.update(delta)
+            if (c.radius === 0) {
+                circles.splice(circles.indexOf(c), 1)
+                fails++
+            }
+            c.draw()
+        })
+    
+        scoreBubbles = scoreBubbles.filter(sb => sb.expired === false)
+        scoreBubbles.forEach( sb => {
+            sb.update(delta)
+            sb.draw()
+        })
+    
+    
+        if (timestamp - lastCircleSpawn > spawnFrequency && circles.length < 7) {      
+            let circle = new Circle()
+            circles.push(circle)
+            lastCircleSpawn = timestamp
+        }    
+    }
+   
     window.requestAnimationFrame(gameLoop)
 }
 
-let circle = new Circle()
-circles.push(circle)
+
 
 
 window.requestAnimationFrame(gameLoop)
