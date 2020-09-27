@@ -416,6 +416,7 @@ function gameLoop(timestamp) {
         missedCircles = 0
         spawnFrequency = 2000
         countdown = 3
+        level = 1
 
         ctx.fillStyle = 'rgb(255, 255, 255)'
         ctx.font = `${screenMin * 0.2}pt 'Bernard MT Condensed', Impact`
@@ -492,7 +493,7 @@ function gameLoop(timestamp) {
             lastEntitySpawn = timestamp
         }    
     }
-    
+
     gameState = nextState
     window.requestAnimationFrame(gameLoop)
 }
