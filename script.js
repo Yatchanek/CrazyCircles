@@ -2,6 +2,9 @@ const gameWindow = document.getElementById('game')
 const ctx = gameWindow.getContext('2d')
 const PI = Math.PI
 const TAU = 2 * PI
+const titleText = 'CRAZY CIRCLES'
+const startText = 'START GAME'
+const startTextCoords = []
 let entities = []
 let scoreBubbles = []
 let screenWidth = window.innerWidth
@@ -15,10 +18,13 @@ let level = 1
 let fails = 0
 let missedCircles = 0
 let circleCount = 0
-let spawnFrequency = 2000
+let spawnFrequency = 1500
+let polygonFrequency = 0.04
 let frameCount = 0
 let countdown = 3
-let nextState = gameState = 'COUNTDOWN'
+let nextState = gameState = 'TITLESCREEN'
+let titleTextSize = startTextSize = 0
+let titleTextWidth = startTextWidth = 0
 
 gameWindow.width = window.innerWidth
 gameWindow.height = window.innerHeight
@@ -71,8 +77,8 @@ class Circle {
         this.shrinkSpeed = Math.min(this.radius, random(this.radius * 0.3 + 0.05 * level, this.radius * 0.4 + 0.05 * level))
         
         if (level > 4 && Math.random() < 0.1 + 0.05 * (level - 5)) {
-            this.vx = random(screenMin * 0.15, screenMin * 0.25) * (Math.random() < 0.5 ? this.direction : -this.direction)
-            this.vy = random(screenMin * 0.15, screenMin * 0.25) * (Math.random() < 0.5 ? this.direction : -this.direction)
+            this.vx = random(screenMin * 0.15, screenMin * 0.2 + 0.015 * level) * (Math.random() < 0.5 ? this.direction : -this.direction)
+            this.vy = random(screenMin * 0.15, screenMin * 0.2 + 0.015 * level) * (Math.random() < 0.5 ? this.direction : -this.direction)
         }
         
         this.dead = false
@@ -112,7 +118,7 @@ class Circle {
         if (this.radius < 0) {
             this.radius = 0
             this.dead = true
-            if (this.type === 'circle') {
+            if (gameState === 'PLAY' && this.type === 'circle') {
                 missedCircles++
                 score -= 50
                 let sb = new ScoreBubble(this.x, this.y, -50, this.colors, this.initialRadius * 0.8)
@@ -127,7 +133,7 @@ class Circle {
         if (this.y < this.radius || this.y > screenHeight - this.radius) {
             this.vy *= -1
         }
-        this.weight *= (1 + 0.025 * Math.sin(frameCount / 10))
+        this.weight *= (1 + 0.02 * Math.sin(frameCount / 10))
     }
 }
 
@@ -164,7 +170,30 @@ class Polygon extends Circle {
     }
 }
 
+function setup() {
+    if (localStorage.hasOwnProperty('CrazyCirclesHighScore')) {
+        highScore = localStorage.getItem('CrazyCirclesHighScore')
+    }
 
+    titleTextSize = screenWidth * 0.2
+    ctx.font = `${titleTextSize}px 'Bernard MT Condensed', Impact`
+    titleTextWidth = ctx.measureText(titleText).width
+    while (titleTextWidth > screenWidth * 0.8) {
+        titleTextSize *= 0.9
+        ctx.font = `${titleTextSize}px 'Bernard MT Condensed', Impact`
+        titleTextWidth = ctx.measureText(titleText).width  
+    }   
+   
+
+    startTextSize = screenWidth * 0.1
+    ctx.font = `${startTextSize}px 'Bernard MT Condensed', Impact`
+    startTextWidth = ctx.measureText(startText).width
+    while (startTextWidth > screenWidth * 0.5) {
+        startTextSize *= 0.9
+        ctx.font = `${startTextSize}px 'Bernard MT Condensed', Impact`
+        startTextWidth = ctx.measureText(startText).width
+    }   
+}
 
 function cls() {
     ctx.save()
@@ -185,12 +214,16 @@ function random(r1, r2) {
 }
 
 function checkHit(e) {
+    if (gameState === 'TITLESCREEN') {
+        if(e.pageX > (screenWidth - startTextWidth) / 2 && e.pageX < (screenWidth + startTextWidth) / 2 
+            && e.pageY > screenHeight * 0.8 - startTextSize / 2 && e.pageY < screenHeight * 0.8 + startTextSize / 2) {
+                nextState = 'COUNTDOWN'
+                entities = []
+            }      
+    }
 
-    if (gameState === 'GAMEOVER') {
-        nextState = 'COUNTDOWN'
-        spawnEntity(false)
-        lastEntitySpawn = performance.now()
-
+    else if (gameState === 'GAMEOVER') {
+        nextState = 'TITLESCREEN'
     }
 
     else {
@@ -199,6 +232,7 @@ function checkHit(e) {
                 entity.radius * entity.radius) {
                 entity.dead = true
                 let points = Math.ceil(50 * entity.radius / entity.initialRadius)
+
                 if (entity.type === 'circle') {
                     score += points
                     if (++circleCount % (10 * level) === 0) {
@@ -207,6 +241,10 @@ function checkHit(e) {
                         spawnFrequency *= (0.9 - 0.02 * (level - 2))
                         if (spawnFrequency < 350) {
                             spawnFrequency = 350
+                        }
+                        polygonFrequency += 0.015
+                        if (polygonFrequency > 0.2) {
+                            polygonFrequency = 0.2
                         }
                     }
                 } else if (entity.type === 'bonus') {
@@ -217,7 +255,6 @@ function checkHit(e) {
                     } else {
                         missedCircles > 0 ? missedCircles-- : fails--
                     }
-
                 } else {
                     points *= -3
                     score += points
@@ -237,7 +274,7 @@ function spawnEntity(allowPolygon) {
     let buff = screenMin * 0.2
     let entity, type
     if (allowPolygon) {
-        type = Math.random() > 0.04 + 0.015 * level ? 'circle' : 'polygon'
+        type = Math.random() > polygonFrequency ? 'circle' : 'polygon'
     }
     else type = 'circle'
     
@@ -269,6 +306,30 @@ function gameLoop(timestamp) {
     lastFrame = timestamp
     frameCount++
     cls()
+
+    if (gameState === 'TITLESCREEN') {
+
+        if (timestamp - lastEntitySpawn > spawnFrequency && entities.length < 7) {    
+            spawnEntity(false)
+            lastEntitySpawn = timestamp
+        }   
+
+        entities = entities.filter(entity => entity.dead === false)
+        entities.forEach(c => {
+            c.update(delta)
+            c.draw()
+        })
+
+        ctx.font = `${titleTextSize}px 'Bernard MT Condensed', Impact`
+        let w = ctx.measureText(titleText).width
+        ctx.textBaseline = 'middle'
+        ctx.fillStyle = `rgb(${155 + 100 * Math.sin(frameCount / 60)}, ${155 + 100 * Math.cos(frameCount / 50)}, ${155 + 100 * Math.sin(frameCount / 70)})`
+        ctx.fillText(titleText, (screenWidth - titleTextWidth) / 2 + screenMin * 0.05 * Math.cos(frameCount / 90), screenHeight * 0.2 + screenMin * 0.05 * Math.sin(frameCount / 90))
+        ctx.fillStyle = `rgb(255, 255, 255)`
+        ctx.font = `${startTextSize}px 'Bernard MT Condensed', Impact`
+        ctx.fillText(startText, (screenWidth - startTextWidth) / 2, screenHeight * 0.8)
+
+    }
 
     if (gameState === 'GAMEOVER') {
         entities = []
@@ -313,6 +374,7 @@ function gameLoop(timestamp) {
         countdown -=delta
         if (countdown <= 0) {
             nextState = 'PLAY'
+            spawnFrequency = 2000
             spawnEntity(false)
             lastEntitySpawn = timestamp
             }
@@ -355,10 +417,7 @@ function gameLoop(timestamp) {
 }
 
 //Main Program :)
-if (localStorage.hasOwnProperty('CrazyCirclesHighScore')) {
-    highScore = localStorage.getItem('CrazyCirclesHighScore')
-}
-
+setup()
 window.requestAnimationFrame(gameLoop)
 
 window.addEventListener('pointerdown', e => checkHit(e))
@@ -367,6 +426,3 @@ window.addEventListener('resize', () => {
     gameWindow.height = screenHeight = window.innerHeight
     screenMin = Math.min(screenHeight, screenWidth)
 })
-// audioElement.addEventListener('ended', () => {
-//     audioElement.play()
-// })
