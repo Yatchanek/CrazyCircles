@@ -19,6 +19,7 @@ const muteIcon = new Image()
 muteIcon.src = 'assets/mute.png'
 const speakerIcon = new Image()
 speakerIcon.src = 'assets/speaker.png'
+const emptyAudio = new Audio()
 let shapes = []
 let scoreBubbles = []
 let explosions = []
@@ -286,9 +287,7 @@ function handleClick(e) {
                 nextState = 'COUNTDOWN'
                 shapes = []
                 currentTip = tips[random(tips.length)]
-                if (!muted) {
-                    music[track].play()
-                }
+                emptyAudio.play()
             }      
     }
 
@@ -515,7 +514,9 @@ function gameLoop(timestamp) {
             spawnFrequency = 2000
             spawnShape(false)
             lastShapeSpawn = timestamp
-
+            if (!muted) {
+                music[track].play()
+            }
         }
     }
 
