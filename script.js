@@ -14,12 +14,12 @@ const tips = [
     "Tip: Missed bonus circles don't count as misses!",
     'Tip: You get negative points for catching a polygon!',
 ]
-const music = []
+//const music = []
 const muteIcon = new Image()
 muteIcon.src = 'assets/mute.png'
 const speakerIcon = new Image()
 speakerIcon.src = 'assets/speaker.png'
-const emptyAudio = new Audio()
+const music = new Audio()
 let shapes = []
 let scoreBubbles = []
 let explosions = []
@@ -253,10 +253,10 @@ function setup() {
         startTextWidth = ctx.measureText(startText).width
     }
 
-    for (let i = 0; i < 3; i++) {
-        let clip = new Audio(`assets/${i}.mp3`)
-        music.push(clip)
-    }
+    // for (let i = 0; i < 3; i++) {
+    //     let clip = new Audio(`assets/${i}.mp3`)
+    //     music.push(clip)
+    // }
 }
 
 function cls() {
@@ -287,7 +287,7 @@ function handleClick(e) {
                 nextState = 'COUNTDOWN'
                 shapes = []
                 currentTip = tips[random(tips.length)]
-                emptyAudio.play()
+                music.play()
             }      
     }
 
@@ -363,11 +363,11 @@ function handleClick(e) {
         //Clicked mute/unmute button
         if (e.pageX >= screenHeight * 0.02 && e.pageX <= screenHeight * 0.045 && e.pageY >= screenHeight * 0.95 && e.pageY <= screenHeight * 0.975 ) {
             if (muted) {
-                music[track].play()
+                music.play()
                 muted = false
             }
             else {
-                music[track].pause()
+                music.pause()
                 muted = true
             }
         }
@@ -515,7 +515,8 @@ function gameLoop(timestamp) {
             spawnShape(false)
             lastShapeSpawn = timestamp
             if (!muted) {
-                music[track].play()
+                music.src = '/assets/0.mp3'
+                music.play()
             }
         }
     }
@@ -580,7 +581,14 @@ window.addEventListener('resize', () => {
     screenMin = Math.min(screenHeight, screenWidth)
 })
 
-music.forEach(m => m.addEventListener('ended', () => {
+// music.forEach(m => m.addEventListener('ended', () => {
+//     // track++
+//     // music[track % music.length].play()
+
+// }))
+
+music.addEventListener('ended', () => {
     track++
-    music[track % music.length].play()
-}))
+    music.src = `/assets/${track % 3}.mp3`
+    music.play()
+})
