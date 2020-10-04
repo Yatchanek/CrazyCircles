@@ -253,7 +253,7 @@ function setup() {
     }
 
     for (let i = 0; i < 3; i++) {
-        let clip = new Audio(`assets/${i}.ogg`)
+        let clip = new Audio(`assets/${i}.mp3`)
         music.push(clip)
     }
 }
