@@ -286,6 +286,9 @@ function handleClick(e) {
                 nextState = 'COUNTDOWN'
                 shapes = []
                 currentTip = tips[random(tips.length)]
+                if (!muted) {
+                    music[track].play()
+                }
             }      
     }
 
@@ -512,9 +515,7 @@ function gameLoop(timestamp) {
             spawnFrequency = 2000
             spawnShape(false)
             lastShapeSpawn = timestamp
-            if (!muted) {
-                music[track].play()
-            }
+
         }
     }
 
