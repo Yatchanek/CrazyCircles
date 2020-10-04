@@ -532,8 +532,8 @@ function gameLoop(timestamp) {
         ctx.fillText(`Max combo: ${maxCombo}`, screenWidth * 0.01, screenMin * 0.31)
         ctx.fillText(`Level: ${level}`, screenWidth * 0.01, screenMin * 0.365)
 
-        // let icon = muted ? muteIcon : speakerIcon
-        // ctx.drawImage(icon, screenHeight * 0.02, screenHeight * 0.95, screenHeight * 0.025, screenHeight * 0.025)
+        let icon = muted ? muteIcon : speakerIcon
+        ctx.drawImage(icon, screenHeight * 0.02, screenHeight * 0.95, screenHeight * 0.025, screenHeight * 0.025)
 
 
         //Filter out expired shapes, update and draw
