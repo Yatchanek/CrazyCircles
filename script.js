@@ -14,11 +14,11 @@ const tips = [
     "Tip: Missed bonus circles don't count as misses!",
     'Tip: You get negative points for catching a polygon!',
 ]
-//const music = []
-// const muteIcon = new Image()
-// muteIcon.src = 'assets/mute.png'
-// const speakerIcon = new Image()
-// speakerIcon.src = 'assets/speaker.png'
+const music = []
+const muteIcon = new Image()
+muteIcon.src = 'assets/mute.png'
+const speakerIcon = new Image()
+speakerIcon.src = 'assets/speaker.png'
 let shapes = []
 let scoreBubbles = []
 let explosions = []
@@ -42,7 +42,7 @@ let countdown = 3
 let nextState = gameState = 'TITLESCREEN'
 let titleTextSize = startTextSize = 0
 let titleTextWidth = startTextWidth = 0
-//let muted = false
+let muted = false
 let track = 0
 
 gameWindow.width = window.innerWidth
@@ -50,7 +50,7 @@ gameWindow.height = window.innerHeight
 
 //Shows score after a circle or polygon is destroyed
 class ScoreBubble {
-    constructor(x, y, value, colors, size) {
+    constructor(x, y, value, colors, size, combo) {
         this.x = x
         this.y = y
         this.value = value.toString()
@@ -59,6 +59,7 @@ class ScoreBubble {
         this.expired = false
         this.size = size / 2
         this.colorFrame = 0
+        this.combo = combo
     }
 
     update(delta) {
@@ -78,6 +79,11 @@ class ScoreBubble {
         ctx.textBaseline = 'middle'
         let w = ctx.measureText(this.value).width
         ctx.fillText(this.value, this.x - w / 2, this.y)
+        if (this.combo) {
+            ctx.font = `${this.size / 3}px 'Bernard MT Condensed', Impact`
+            w = ctx.measureText('Combo!').width
+            ctx.fillText('Combo!', this.x - w /2, this.y + this.size * 0.6)
+        }
         ctx.restore()
     }
 }
@@ -95,6 +101,7 @@ class Shape {
         this.vx = this.vy = 0
         this.shrinkSpeed = Math.min(this.radius, random(this.radius * 0.3 + 0.05 * level, this.radius * 0.4 + 0.05 * level))
         this.lifetime = 1
+        this.colorTweak = 0
 
         //Chance to become a moving shape from level 5
         if (level > 4 && Math.random() < 0.1 + 0.05 * (level - 5)) {
@@ -121,7 +128,7 @@ class Shape {
         this.colors = []
         for (let i = 0; i < this.pieces; i++) {
             this.colors.push(`rgb(${random(100, 255)}, ${random(10, 255)}, ${random(10, 255)})`)
-        }
+           }
 
         if (this.type === 'bonus') {
             this.shrinkSpeed *= 2.5
@@ -132,7 +139,14 @@ class Shape {
         //Drawing each part of circle/polygon with different color
         //Using this.lifetime variable for animation when clicked
         ctx.save()
-        ctx.lineWidth = this.weight
+        let ratio = this.radius / this.initialRadius
+        if (ratio > 0.8) {
+            ctx.lineWidth = this.weight * (1 + (10 * ratio - 8))    
+        } 
+        else {
+            ctx.lineWidth = this.weight
+        }
+
         switch(this.type) {
             case 'circle':
             case 'bonus-red':
@@ -143,7 +157,7 @@ class Shape {
                     ctx.arc(this.x, this.y, this.radius, i * TAU / this.pieces + this.direction * frameCount / this.rotationSpeed, 
                             (i + this.lifetime) * TAU / this.pieces + this.direction * frameCount / this.rotationSpeed)                  
                     ctx.stroke()
-
+                       
                     if(this.type === 'bonus-red' || this.type === 'bonus-green') {
                         ctx.beginPath()
                         ctx.arc(this.x, this.y, this.radius, 0, TAU)
@@ -238,10 +252,10 @@ function setup() {
         startTextWidth = ctx.measureText(startText).width
     }
 
-    // for (let i = 0; i < 3; i++) {
-    //     let clip = new Audio(`assets/${i}.ogg`)
-    //     music.push(clip)
-    // }
+    for (let i = 0; i < 3; i++) {
+        let clip = new Audio(`assets/${i}.ogg`)
+        music.push(clip)
+    }
 }
 
 function cls() {
@@ -338,23 +352,23 @@ function handleClick(e) {
                 }
 
                 //Spawn a score bubble
-                let sb = new ScoreBubble(shape.x, shape.y, points, shape.colors, shape.radius)
+                let sb = new ScoreBubble(shape.x, shape.y, points, shape.colors, shape.radius, combo)
                 scoreBubbles.push(sb)
                 break
             }
         }
 
         //Clicked mute/unmute button
-        // if (e.pageX >= screenHeight * 0.02 && e.pageX <= screenHeight * 0.045 && e.pageY >= screenHeight * 0.95 && e.pageY <= screenHeight * 0.975 ) {
-        //     if (muted) {
-        //         music[track].play()
-        //         muted = false
-        //     }
-        //     else {
-        //         music[track].pause()
-        //         muted = true
-        //     }
-        // }
+        if (e.pageX >= screenHeight * 0.02 && e.pageX <= screenHeight * 0.045 && e.pageY >= screenHeight * 0.95 && e.pageY <= screenHeight * 0.975 ) {
+            if (muted) {
+                music[track].play()
+                muted = false
+            }
+            else {
+                music[track].pause()
+                muted = true
+            }
+        }
     }   
 }
 
@@ -498,9 +512,9 @@ function gameLoop(timestamp) {
             spawnFrequency = 2000
             spawnShape(false)
             lastShapeSpawn = timestamp
-            // if (!muted) {
-            //     music[track].play()
-            // }
+            if (!muted) {
+                music[track].play()
+            }
         }
     }
 
@@ -538,8 +552,8 @@ function gameLoop(timestamp) {
         
         if (fails > 3 || missedCircles > 10) {
             nextState = 'GAMEOVER'
-            // music.pause()
-            // music.currentTime = 0
+            music.pause()
+            music.currentTime = 0
         }
         
         //Spawn new shape after some time
@@ -564,7 +578,7 @@ window.addEventListener('resize', () => {
     screenMin = Math.min(screenHeight, screenWidth)
 })
 
-// music.forEach(m => m.addEventListener('ended', () => {
-//     track++
-//     music[track % music.length].play()
-// }))
+music.forEach(m => m.addEventListener('ended', () => {
+    track++
+    music[track % music.length].play()
+}))
